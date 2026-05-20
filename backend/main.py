@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import shutil
 from pathlib import Path
 import uuid
@@ -17,6 +18,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def chunk_text(text: str) -> list[dict]:
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=150,
+        separators=["\n\n", "\n", ".", " ", ""],
+    )
+
+    chunks = splitter.split_text(text)
+
+    return [
+        {
+            "chunk_index": index,
+            "text": chunk,
+            "character_count": len(chunk),
+        }
+        for index, chunk in enumerate(chunks)
+    ]
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -41,6 +60,7 @@ async def upload_document(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     text = file_path.read_text(encoding="utf-8")
+    chunks = chunk_text(text)
 
     return {
         "document_id": document_id,
@@ -48,7 +68,9 @@ async def upload_document(file: UploadFile = File(...)):
         "stored_as": safe_filename,
         "content_type": file.content_type,
         "character_count": len(text),
+        "chunk_count": len(chunks),
         "preview": text[:500],
+        "chunks_preview": chunks[:3],
         "message": "Document uploaded and text extracted successfully",
     }
 
