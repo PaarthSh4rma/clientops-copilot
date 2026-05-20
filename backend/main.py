@@ -1,18 +1,18 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import os
 import shutil
 from pathlib import Path
+import uuid
 
 app = FastAPI(
     title="ClientOps Copilot API",
-    description="Backend API for document upload, RAG search, and AI workflow automation.",
+    description="AI-powered operations copilot backend",
     version="0.1.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,16 +23,33 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.post("/documents/upload")
 async def upload_document(file: UploadFile = File(...)):
-    file_path = UPLOAD_DIR / file.filename
+    allowed_extensions = {".txt"}
+    original_filename = file.filename or "uploaded-file"
+    extension = Path(original_filename).suffix.lower()
+
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="Only .txt files are supported for now."
+        )
+
+    document_id = str(uuid.uuid4())
+    safe_filename = f"{document_id}{extension}"
+    file_path = UPLOAD_DIR / safe_filename
 
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    text = file_path.read_text(encoding="utf-8")
+
     return {
-        "filename": file.filename,
+        "document_id": document_id,
+        "filename": original_filename,
+        "stored_as": safe_filename,
         "content_type": file.content_type,
-        "path": str(file_path),
-        "message": "Document uploaded successfully"
+        "character_count": len(text),
+        "preview": text[:500],
+        "message": "Document uploaded and text extracted successfully",
     }
 
 @app.get("/health")
@@ -42,4 +59,4 @@ def health_check():
         "service": "clientops-copilot-api"
     }
 
-    
+
