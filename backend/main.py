@@ -32,16 +32,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 def build_grounded_answer(question: str, retrieved_chunks: list[dict]) -> str:
     if not retrieved_chunks:
-        return "I could not find enough relevant information in the uploaded document to answer that."
+        return (
+            "I could not find enough relevant information in the uploaded document "
+            "to answer that question."
+        )
 
     best_chunk = retrieved_chunks[0]
+    best_text = best_chunk["text"]
 
     return (
-        "Based on the uploaded document, the most relevant information I found is:\n\n"
-        f"\"{best_chunk['text']}\"\n\n"
-        "This answer is grounded in the retrieved document context rather than general model knowledge."
+        "I found a relevant answer in the uploaded document.\n\n"
+        f"The strongest matching source is chunk {best_chunk['chunk_index']} "
+        f"with a similarity score of {best_chunk['score']}.\n\n"
+        f"Relevant excerpt:\n\"{best_text[:500]}\""
     )
 
 def chunk_text(text: str) -> list[dict]:
