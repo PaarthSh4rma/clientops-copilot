@@ -5,6 +5,14 @@ from app.embeddings import embed_texts
 import shutil
 from pathlib import Path
 import uuid
+from pydantic import BaseModel
+from app.store import save_document, get_document
+from app.search import rank_chunks
+
+class SearchRequest(BaseModel):
+    document_id: str
+    query: str
+    top_k: int = 3
 
 app = FastAPI(
     title="ClientOps Copilot API",
@@ -66,6 +74,13 @@ async def upload_document(file: UploadFile = File(...)):
     chunk_texts = [chunk["text"] for chunk in chunks]
     embeddings = embed_texts(chunk_texts)
 
+    save_document(
+    document_id=document_id,
+    filename=original_filename,
+    chunks=chunks,
+    embeddings=embeddings,
+    )
+
     return {
         "document_id": document_id,
         "filename": original_filename,
@@ -79,6 +94,29 @@ async def upload_document(file: UploadFile = File(...)):
         "embedding_dimensions": len(embeddings[0]) if embeddings else 0,
         "embedded_chunk_count": len(embeddings),
         "message": "Document uploaded and text extracted successfully",
+    }
+
+@app.post("/documents/search")
+def search_document(request: SearchRequest):
+    document = get_document(request.document_id)
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    query_embedding = embed_texts([request.query])[0]
+
+    results = rank_chunks(
+        query_embedding=query_embedding,
+        chunks=document["chunks"],
+        chunk_embeddings=document["embeddings"],
+        top_k=request.top_k,
+    )
+
+    return {
+        "document_id": request.document_id,
+        "filename": document["filename"],
+        "query": request.query,
+        "results": results,
     }
 
 @app.get("/health")
