@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.embeddings import embed_texts
 import shutil
 from pathlib import Path
 import uuid
@@ -62,6 +63,9 @@ async def upload_document(file: UploadFile = File(...)):
     text = file_path.read_text(encoding="utf-8")
     chunks = chunk_text(text)
 
+    chunk_texts = [chunk["text"] for chunk in chunks]
+    embeddings = embed_texts(chunk_texts)
+
     return {
         "document_id": document_id,
         "filename": original_filename,
@@ -71,6 +75,9 @@ async def upload_document(file: UploadFile = File(...)):
         "chunk_count": len(chunks),
         "preview": text[:500],
         "chunks_preview": chunks[:3],
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "embedding_dimensions": len(embeddings[0]) if embeddings else 0,
+        "embedded_chunk_count": len(embeddings),
         "message": "Document uploaded and text extracted successfully",
     }
 
