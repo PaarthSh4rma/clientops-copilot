@@ -14,6 +14,11 @@ class SearchRequest(BaseModel):
     query: str
     top_k: int = 3
 
+class ChatRequest(BaseModel):
+    document_id: str
+    question: str
+    top_k: int = 3
+
 app = FastAPI(
     title="ClientOps Copilot API",
     description="AI-powered operations copilot backend",
@@ -27,6 +32,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+def build_grounded_answer(question: str, retrieved_chunks: list[dict]) -> str:
+    if not retrieved_chunks:
+        return "I could not find enough relevant information in the uploaded document to answer that."
+
+    best_chunk = retrieved_chunks[0]
+
+    return (
+        "Based on the uploaded document, the most relevant information I found is:\n\n"
+        f"\"{best_chunk['text']}\"\n\n"
+        "This answer is grounded in the retrieved document context rather than general model knowledge."
+    )
 
 def chunk_text(text: str) -> list[dict]:
     splitter = RecursiveCharacterTextSplitter(
@@ -117,6 +133,44 @@ def search_document(request: SearchRequest):
         "filename": document["filename"],
         "query": request.query,
         "results": results,
+    }
+@app.post("/documents/chat")
+def chat_with_document(request: ChatRequest):
+    document = get_document(request.document_id)
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    query_embedding = embed_texts([request.question])[0]
+
+    retrieved_chunks = rank_chunks(
+        query_embedding=query_embedding,
+        chunks=document["chunks"],
+        chunk_embeddings=document["embeddings"],
+        top_k=request.top_k,
+    )
+
+    answer = build_grounded_answer(
+        question=request.question,
+        retrieved_chunks=retrieved_chunks,
+    )
+
+    citations = [
+        {
+            "chunk_index": chunk["chunk_index"],
+            "score": chunk["score"],
+            "source": document["filename"],
+            "preview": chunk["text"][:250],
+        }
+        for chunk in retrieved_chunks
+    ]
+
+    return {
+        "document_id": request.document_id,
+        "filename": document["filename"],
+        "question": request.question,
+        "answer": answer,
+        "citations": citations,
     }
 
 @app.get("/health")
