@@ -8,3 +8,5 @@ node_modules/
 dist/
 .next/
 .DS_Store
+testfiles/
+backend/uploads/
