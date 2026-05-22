@@ -27,15 +27,15 @@ export function UploadCard({ document, isUploading, onUpload }: UploadCardProps)
       <label className="group flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-black/20 px-6 py-10 text-center transition hover:border-cyan-300/50 hover:bg-cyan-300/5">
         <UploadCloud className="mb-4 h-9 w-9 text-cyan-200" />
         <span className="text-sm font-medium">
-          {isUploading ? "Uploading..." : "Drop in a .txt file"}
+          {isUploading ? "Uploading..." : "Drop in a file"}
         </span>
         <span className="mt-1 text-xs text-white/40">
-          PDF and DOCX support coming next
+          Supports TXT, PDF, and DOCX documents
         </span>
 
         <input
           type="file"
-          accept=".txt"
+          accept=".txt,.pdf,.docx"
           className="hidden"
           disabled={isUploading}
           onChange={(event) => {

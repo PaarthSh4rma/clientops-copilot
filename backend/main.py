@@ -8,6 +8,7 @@ import uuid
 from pydantic import BaseModel
 from app.search import rank_chunks
 import ast
+from app.extractors import extract_text
 from sqlalchemy.orm import Session
 
 from app.database import Base
@@ -83,14 +84,14 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.post("/documents/upload")
 async def upload_document(file: UploadFile = File(...)):
-    allowed_extensions = {".txt"}
+    allowed_extensions = {".txt", ".pdf", ".docx"}    
     original_filename = file.filename or "uploaded-file"
     extension = Path(original_filename).suffix.lower()
 
     if extension not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail="Only .txt files are supported for now."
+            detail="Only .txt, .pdf and .docx files are supported for now."
         )
 
     document_id = str(uuid.uuid4())
@@ -100,7 +101,17 @@ async def upload_document(file: UploadFile = File(...)):
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    text = file_path.read_text(encoding="utf-8")
+    try:
+        text = extract_text(file_path=file_path, extension=extension)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    if not text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No extractable text found in this document."
+        )
+    
     chunks = chunk_text(text)
 
     chunk_texts = [chunk["text"] for chunk in chunks]
@@ -142,8 +153,8 @@ async def upload_document(file: UploadFile = File(...)):
         "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
         "embedding_dimensions": len(embeddings[0]) if embeddings else 0,
         "embedded_chunk_count": len(embeddings),
-        "message": "Document uploaded and text extracted successfully",
-    }
+        "message": "Document uploaded, text extracted, chunked, embedded, and persisted successfully",    
+        }
 
 @app.post("/documents/search")
 def search_document(request: SearchRequest):
