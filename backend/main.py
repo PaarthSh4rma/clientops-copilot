@@ -273,6 +273,7 @@ def chat_with_document(request: ChatRequest):
         "filename": document.filename,
         "question": request.question,
         "answer": answer,
+        "answer_mode": answer_mode,
         "citations": citations,
     }
 
