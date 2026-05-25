@@ -11,3 +11,5 @@ dist/
 testfiles/
 backend/uploads/
 ./backend/clientops.db
+*.db
+*.sqlite3
