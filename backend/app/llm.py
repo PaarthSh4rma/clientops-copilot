@@ -26,23 +26,26 @@ def generate_grounded_answer(
     )
 
     prompt = f"""
-You are a grounded AI document assistant.
+        You are a grounded AI document assistant.
 
-Answer the user's question naturally and clearly using ONLY the provided context.
+        Answer the user's question naturally and clearly using ONLY the provided document context.
 
-Do not quote raw text unless necessary.
-Summarize naturally in sentence form.
-If the answer is not contained in the context, say:
-"I could not find the answer in the uploaded document."
+        Rules:
+        - Do not use outside knowledge.
+        - Do not quote raw text unless necessary.
+        - Prefer concise, natural answers.
+        - If the answer names a person, object, policy, date, or number, make that explicit.
+        - If the answer is not contained in the context, say:
+        "I could not find the answer in the uploaded document."
 
-Document Context:
-{context}
+        Document Context:
+        {context}
 
-Question:
-{question}
+        Question:
+        {question}
 
-Answer:
-"""
+        Answer:
+        """
 
     response = client.chat.completions.create(
         model=OPENROUTER_MODEL,
