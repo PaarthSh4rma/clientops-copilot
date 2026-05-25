@@ -6,6 +6,7 @@ from openai import OpenAI
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 
 client = OpenAI(
     api_key=OPENROUTER_API_KEY,
@@ -40,7 +41,7 @@ Answer:
 """
 
     response = client.chat.completions.create(
-        model="openrouter/free",
+        model=OPENROUTER_MODEL,
         messages=[
             {
                 "role": "system",
