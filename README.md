@@ -27,21 +27,25 @@ Built with a modular architecture focused on real-world AI systems engineering:
 ## Architecture
 
 ```text
-Upload Document
-        ↓
-Text Extraction
-        ↓
-Chunking Pipeline
-        ↓
-Local Embedding Generation
-        ↓
-SQLite Persistence
-        ↓
-Semantic Retrieval
-        ↓
-LLM Grounded Answer Generation
-        ↓
-Citation-backed Response
+Frontend (React + Vite)
+        │
+        ▼
+FastAPI Backend
+        │
+        ├── Document Extraction (TXT/PDF/DOCX)
+        │
+        ├── Chunking Pipeline
+        │
+        ├── Local Embeddings (SentenceTransformers)
+        │
+        ├── Metadata Persistence (SQLite)
+        │
+        ├── Vector Retrieval (Pinecone)
+        │
+        └── LLM Generation (OpenRouter)
+        │
+        ▼
+Grounded Answer + Source Citations
 ```
 
 
@@ -151,7 +155,7 @@ OPENROUTER_MODEL=openrouter/free
 - [x] Persistent embedding storage
 - [x] PDF/DOCX ingestion
 - [x] Citation-backed grounded answers
-- [ ] Pinecone vector database
+- [x] Pinecone vector database
 - [ ] Azure OpenAI support
 - [ ] Conversational memory
 - [ ] Multi-user authentication
