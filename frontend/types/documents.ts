@@ -23,5 +23,6 @@ export type ChatResponse = {
   filename: string;
   question: string;
   answer: string;
+  answer_mode: "llm" | "fallback";
   citations: Citation[];
 };

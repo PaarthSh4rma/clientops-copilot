@@ -70,6 +70,9 @@ export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelPro
             <p className="mb-2 text-xs uppercase tracking-[0.2em] text-cyan-200/70">
               Grounded answer
             </p>
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/50">
+            {response.answer_mode === "llm" ? "LLM generated" : "Fallback mode"}
+            </span>
             <p className="whitespace-pre-line text-sm leading-7 text-white/75">
               {response.answer}
             </p>

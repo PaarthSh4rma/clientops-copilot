@@ -245,10 +245,18 @@ def chat_with_document(request: ChatRequest):
         top_k=request.top_k,
     )
 
-    answer = generate_grounded_answer(
-        question=request.question,
-        retrieved_chunks=retrieved_chunks,
-    )
+    try:
+        answer = generate_grounded_answer(
+            question=request.question,
+            retrieved_chunks=retrieved_chunks,
+        )
+        answer_mode = "llm"
+    except Exception:
+        answer = build_grounded_answer(
+            question=request.question,
+            retrieved_chunks=retrieved_chunks,
+        )
+        answer_mode = "fallback"
 
     citations = [
         {
