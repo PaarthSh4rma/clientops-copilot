@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { chatWithDocument, uploadDocument } from "../api/client";
-import { AppShell } from "../components/AppShell";
-import { ChatPanel } from "../components/ChatPanel";
-import { Header } from "../components/Header";
-import { UploadCard } from "../components/UploadCard";
-import type { ChatResponse, UploadedDocument } from "../types/documents";
+import { AppShell } from "./components/AppShell";
+import { ChatPanel } from "./components/ChatPanel";
+import { Header } from "./components/Header";
+import { UploadCard } from "./components/UploadCard";
+import { Toast } from "./components/ui/Toast";
+import type { ChatResponse, UploadedDocument } from "./types/documents";
 
 function App() {
   const [document, setDocument] = useState<UploadedDocument | null>(null);
@@ -12,15 +13,19 @@ function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleUpload(file: File) {
     setError(null);
     setIsUploading(true);
     setChatResponse(null);
+    setError(null);
+    setSuccess(null);
 
     try {
       const uploadedDocument = await uploadDocument(file);
       setDocument(uploadedDocument);
+      setSuccess("Document ingested successfully.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -33,6 +38,8 @@ function App() {
 
     setError(null);
     setIsAsking(true);
+    setError(null);
+    setSuccess(null);
 
     try {
       const response = await chatWithDocument({
@@ -41,6 +48,7 @@ function App() {
       });
 
       setChatResponse(response);
+      setSuccess("Grounded answer generated.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Question failed");
     } finally {
@@ -49,31 +57,28 @@ function App() {
   }
 
   return (
-    <AppShell>
-      <Header />
+  <AppShell>
+    <Header />
 
-      {error && (
-        <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
-          {error}
-        </div>
-      )}
+    {error && <Toast type="error" message={error} />}
+    {success && <Toast type="success" message={success} />}
 
-      <section className="grid flex-1 gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <UploadCard
-          document={document}
-          isUploading={isUploading}
-          onUpload={handleUpload}
-        />
+    <section className="grid flex-1 gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+      <UploadCard
+        document={document}
+        isUploading={isUploading}
+        onUpload={handleUpload}
+      />
 
-        <ChatPanel
-          disabled={!document}
-          isLoading={isAsking}
-          response={chatResponse}
-          onAsk={handleAsk}
-        />
-      </section>
-    </AppShell>
-  );
+      <ChatPanel
+        disabled={!document}
+        isLoading={isAsking}
+        response={chatResponse}
+        onAsk={handleAsk}
+      />
+    </section>
+  </AppShell>
+);
 }
 
 export default App;

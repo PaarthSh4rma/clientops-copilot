@@ -1,6 +1,10 @@
 import { FileText, UploadCloud } from "lucide-react";
+import { useState } from "react";
 import type { UploadedDocument } from "../types/documents";
+import { Card } from "./ui/Card";
+import { Spinner } from "./ui/Spinner";
 import { StatusBadge } from "./StatusBadge";
+import { cn } from "../lib/cn";
 
 type UploadCardProps = {
   document: UploadedDocument | null;
@@ -9,25 +13,57 @@ type UploadCardProps = {
 };
 
 export function UploadCard({ document, isUploading, onUpload }: UploadCardProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  function handleFile(file?: File) {
+    if (!file || isUploading) return;
+    onUpload(file);
+  }
+
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+    <Card>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm text-cyan-200">Step 1</p>
           <h2 className="mt-1 text-2xl font-semibold">Upload knowledge</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-white/55">
-            Upload a text document and the backend will extract, chunk and embed it
-            using the local semantic engine.
+            Upload a business document and ClientOps will extract, chunk, embed,
+            and persist it for grounded retrieval.
           </p>
         </div>
 
         <FileText className="h-6 w-6 text-white/40" />
       </div>
 
-      <label className="group flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-black/20 px-6 py-10 text-center transition hover:border-cyan-300/50 hover:bg-cyan-300/5">
-        <UploadCloud className="mb-4 h-9 w-9 text-cyan-200" />
+      <label
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+          handleFile(event.dataTransfer.files?.[0]);
+        }}
+        className={cn(
+          "group flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed px-6 py-10 text-center transition",
+          "bg-black/20 hover:border-cyan-300/50 hover:bg-cyan-300/5",
+          isDragging
+            ? "border-cyan-300/70 bg-cyan-300/10"
+            : "border-white/15",
+        )}
+      >
+        {isUploading ? (
+          <div className="mb-4 grid h-10 w-10 place-items-center rounded-full bg-cyan-300">
+            <Spinner />
+          </div>
+        ) : (
+          <UploadCloud className="mb-4 h-9 w-9 text-cyan-200" />
+        )}
+
         <span className="text-sm font-medium">
-          {isUploading ? "Uploading..." : "Drop in a file"}
+          {isUploading ? "Ingesting document..." : "Drop in a file"}
         </span>
         <span className="mt-1 text-xs text-white/40">
           Supports TXT, PDF, and DOCX documents
@@ -38,10 +74,7 @@ export function UploadCard({ document, isUploading, onUpload }: UploadCardProps)
           accept=".txt,.pdf,.docx"
           className="hidden"
           disabled={isUploading}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) onUpload(file);
-          }}
+          onChange={(event) => handleFile(event.target.files?.[0])}
         />
       </label>
 
@@ -68,6 +101,6 @@ export function UploadCard({ document, isUploading, onUpload }: UploadCardProps)
           </div>
         </div>
       )}
-    </section>
+    </Card>
   );
 }
