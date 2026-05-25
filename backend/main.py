@@ -11,7 +11,8 @@ from app.search import rank_chunks
 import ast
 from app.extractors import extract_text
 from sqlalchemy.orm import Session
-
+from app.vectorstore import upsert_document_chunks
+from app.vectorstore import semantic_search
 from app.database import Base
 from app.database import SessionLocal
 from app.database import engine
@@ -117,6 +118,12 @@ async def upload_document(file: UploadFile = File(...)):
 
     chunk_texts = [chunk["text"] for chunk in chunks]
     embeddings = embed_texts(chunk_texts)
+
+    upsert_document_chunks(
+    document_id=document_id,
+    chunks=chunks,
+    embeddings=embeddings,
+)
 
     db: Session = SessionLocal()
 
@@ -238,12 +245,22 @@ def chat_with_document(request: ChatRequest):
 
         embeddings.append(ast.literal_eval(record.embedding))
 
-    retrieved_chunks = rank_chunks(
+    pinecone_results = semantic_search(
         query_embedding=query_embedding,
-        chunks=chunks,
-        chunk_embeddings=embeddings,
         top_k=request.top_k,
     )
+
+    retrieved_chunks = []
+
+    for match in pinecone_results:
+        retrieved_chunks.append(
+            {
+                "chunk_index": match.metadata["chunk_index"],
+                "text": match.metadata["text"],
+                "score": round(match.score, 4),
+                "character_count": len(match.metadata["text"]),
+            }
+        )
 
     try:
         answer = generate_grounded_answer(

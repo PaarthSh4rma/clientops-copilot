@@ -26,8 +26,12 @@ def generate_grounded_answer(
     )
 
     prompt = f"""
-You are an AI assistant answering questions ONLY using the provided document context.
+You are a grounded AI document assistant.
 
+Answer the user's question naturally and clearly using ONLY the provided context.
+
+Do not quote raw text unless necessary.
+Summarize naturally in sentence form.
 If the answer is not contained in the context, say:
 "I could not find the answer in the uploaded document."
 
