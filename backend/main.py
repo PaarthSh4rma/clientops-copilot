@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.embeddings import embed_texts
+from app.llm import generate_grounded_answer
 import shutil
 from pathlib import Path
 import uuid
@@ -244,7 +245,7 @@ def chat_with_document(request: ChatRequest):
         top_k=request.top_k,
     )
 
-    answer = build_grounded_answer(
+    answer = generate_grounded_answer(
         question=request.question,
         retrieved_chunks=retrieved_chunks,
     )
