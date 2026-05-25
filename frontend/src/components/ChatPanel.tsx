@@ -62,6 +62,25 @@ export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelPro
         </div>
       )}
 
+      {!response && !isLoading && !disabled && (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+          <p className="text-sm font-medium text-white/80">Ready to ask questions</p>
+          <p className="mt-2 text-sm leading-6 text-white/45">
+            Try asking for a summary, extracting key dates, identifying risks, or
+            finding specific details from the uploaded document.
+          </p>
+        </div>
+      )}
+
+      {disabled && (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+          <p className="text-sm font-medium text-white/80">Upload a document to begin</p>
+          <p className="mt-2 text-sm leading-6 text-white/45">
+            ClientOps will index the document and prepare it for grounded AI search.
+          </p>
+        </div>
+      )}
+
       {response && (
         <div className="mt-6">
           <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/5 p-5">

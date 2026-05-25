@@ -81,7 +81,7 @@ export function UploadCard({ document, isUploading, onUpload }: UploadCardProps)
       {document && (
         <div className="mt-6 space-y-4">
           <div>
-            <p className="text-sm text-white/40">Active document</p>
+            <p className="text-sm text-white/40">Indexed document</p>
             <p className="mt-1 font-medium">{document.filename}</p>
           </div>
 

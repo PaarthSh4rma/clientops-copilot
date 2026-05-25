@@ -10,3 +10,4 @@ dist/
 .DS_Store
 testfiles/
 backend/uploads/
+./backend/clientops.db
