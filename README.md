@@ -1,179 +1,117 @@
 # ClientOps Copilot
 
-AI-powered knowledge operations copilot for modern teams.
+ClientOps Copilot is a portfolio project and evolving product prototype for agencies, consultancies, implementation teams, and customer-success teams. It provides a single workspace where users can index client documents and ask source-grounded questions without manually searching contracts, briefs, SOPs, onboarding files, and project material.
 
-ClientOps Copilot is a full-stack Retrieval-Augmented Generation (RAG) platform that allows users to upload documents, semantically search them, and ask grounded questions using local embeddings and LLM-powered responses.
+**v1.5 is a trustworthy single-workspace foundation—not a production-ready or multi-tenant SaaS product.**
 
-Built with a modular architecture focused on real-world AI systems engineering:
-- document ingestion
-- semantic chunk retrieval
-- persistent vector storage
-- grounded answer generation
-- citation-backed responses
+## What v1.5 does
 
-## Features
+- uploads TXT, PDF, and DOCX files up to a configurable limit
+- validates file extension, reported content type, and basic file signatures
+- preserves PDF pages and useful DOCX/TXT locations in citations
+- stores source files locally, metadata/chunk text in SQLite, and vectors in Pinecone
+- scopes every similarity query and deletion to one document
+- answers through OpenRouter only when retrieval clears a configurable relevance threshold
+- distinguishes supported answers, insufficient evidence, and provider failure
+- lists, selects, inspects, and deletes documents through real lifecycle APIs
+- reports liveness separately from dependency readiness
 
-- Upload TXT, PDF, and DOCX documents
-- Automatic document text extraction
-- Intelligent chunking pipeline
-- Local semantic embeddings using SentenceTransformers
-- Persistent document + embedding storage with SQLite
-- Semantic similarity search
-- Grounded LLM-powered question answering
-- Citation-backed responses
-- Modular React + FastAPI architecture
-- Local-first development workflow
+It does **not** provide authentication, organisations, tenant isolation, durable conversation memory, OCR, asynchronous ingestion, encrypted object storage, or production operations. It cannot guarantee hallucination-free answers.
 
 ## Architecture
 
-```text
-Frontend (React + Vite)
-        │
-        ▼
-FastAPI Backend
-        │
-        ├── Document Extraction (TXT/PDF/DOCX)
-        │
-        ├── Chunking Pipeline
-        │
-        ├── Local Embeddings (SentenceTransformers)
-        │
-        ├── Metadata Persistence (SQLite)
-        │
-        ├── Vector Retrieval (Pinecone)
-        │
-        └── LLM Generation (OpenRouter)
-        │
-        ▼
-Grounded Answer + Source Citations
-```
+React/Vite calls a FastAPI API. Routes delegate to ingestion, retrieval, chat, and lifecycle services. SQLite is authoritative for document/chunk metadata and vector IDs; Pinecone is authoritative for vectors; a file-storage interface currently writes source files locally. SentenceTransformers creates embeddings and OpenRouter generates answers from retrieved context.
 
+See [architecture](docs/ARCHITECTURE.md), [product audit](docs/PRODUCT_AUDIT.md), and [roadmap](docs/ROADMAP.md).
 
-## Tech Stack
+## Local setup
 
-### Frontend
-- React
-- TypeScript
-- Vite
-- TailwindCSS
-
-### Backend
-- FastAPI
-- SQLAlchemy
-- SQLite
-
-### AI / ML
-- SentenceTransformers
-- OpenRouter
-- Local embeddings
-- Retrieval-Augmented Generation (RAG)
-
-### Document Processing
-- PyMuPDF
-- python-docx
-
-## Project Structure
-
-```text
-clientops-copilot/
-├── frontend/
-│   ├── src/
-│   │   ├── api/
-│   │   ├── components/
-│   │   ├── types/
-│   │   └── App.tsx
-│
-├── backend/
-│   ├── app/
-│   │   ├── database.py
-│   │   ├── embeddings.py
-│   │   ├── extractors.py
-│   │   ├── llm.py
-│   │   ├── models.py
-│   │   └── search.py
-│   ├── uploads/
-│   └── main.py
-```
-
-## How It Works
-
-1. Users upload documents through the frontend dashboard
-2. Backend extracts raw document text
-3. Text is chunked into semantically searchable segments
-4. SentenceTransformer embeddings are generated locally
-5. Chunks + embeddings are persisted into SQLite
-6. User questions are embedded and semantically matched
-7. Top chunks are passed into the LLM context window
-8. The LLM generates grounded responses backed by citations
-
-
-## Local Setup
-
-### Backend
+Prerequisites: Python 3.11+, Node 22+, a Pinecone index matching the embedding model dimensions, and OpenRouter/Pinecone credentials.
 
 ```bash
 cd backend
-
 python3.11 -m venv venv
 source venv/bin/activate
-
 pip install -r requirements.txt
-
-uvicorn main:app --reload
+cp .env.example .env
+# add provider credentials
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-### Frontend
+In another terminal:
 
 ```bash
 cd frontend
-
-npm install
+npm ci
 npm run dev
 ```
 
-## Environment Variables
+The UI defaults to `http://localhost:8000`. Override it with `VITE_API_BASE_URL` at frontend build time. Development CORS permits the `localhost:5173` and `127.0.0.1:5173` loopback origins by default.
 
-Create a `.env` file inside `backend/`:
+Existing prototype databases contain stringified embeddings and do not match the v1.5 model. Because they are development-only artifacts, recreate them and run `alembic upgrade head`; source files/vectors from the old prototype should be manually cleared. Future schema changes should use Alembic migrations.
 
-```env
-OPENROUTER_API_KEY=your_key_here
-OPENROUTER_MODEL=openrouter/free
+## Configuration
+
+`backend/.env.example` documents every setting: environment, database URL, CORS origins, upload path/limit, OpenRouter credentials/model, Pinecone credentials/index, embedding model, retrieval defaults, and log level. Production mode fails at startup when required provider configuration is absent. Never commit `.env` or client documents.
+
+## Test and quality commands
+
+```bash
+cd backend
+ruff check .
+ruff format --check .
+pytest -q
+
+cd ../frontend
+npm run format:check
+npm run lint
+npm run build
 ```
 
-## API Endpoints
+Tests use fakes and require no real Pinecone/OpenRouter credentials. CI runs the same checks on pushes and pull requests.
 
-| Method | Endpoint | Description |
+## Docker workflow
+
+Create `backend/.env` from the example, add provider credentials, then:
+
+```bash
+docker compose up --build
+```
+
+The frontend is served at `http://localhost:5173`, the API at `http://localhost:8000`, and named volumes preserve SQLite data/uploads. This is a local/demo setup, not a production topology.
+
+## API overview
+
+| Method | Endpoint | Purpose |
 |---|---|---|
-| POST | `/documents/upload` | Upload document |
-| POST | `/documents/search` | Semantic chunk retrieval |
-| POST | `/documents/chat` | Grounded RAG chat |
-| GET | `/health` | Health check |
+| GET | `/health` | lightweight process liveness |
+| GET | `/ready` | database, storage, vector, and LLM readiness |
+| POST | `/documents/upload` | validate and synchronously index a document |
+| GET | `/documents` | list documents |
+| GET | `/documents/{id}` | document details |
+| DELETE | `/documents/{id}` | delete vectors, metadata/chunks, and source file |
+| POST | `/documents/chat` | ask a bounded question about one document |
+
+Interactive OpenAPI documentation is at `/docs` while the API is running.
+
+## Security and privacy
+
+There is no authentication or user isolation. Do not expose v1.5 publicly or upload sensitive client data. Retrieved document excerpts are sent to OpenRouter; embeddings and join/isolation metadata are sent to Pinecone; original files remain on local disk. Review provider terms, retention, regional requirements, and data-processing obligations before any real-client use. Logs avoid secrets and full source content, but the prototype does not implement formal audit, retention, backup, encryption, or incident-response controls.
+
+## Engineering decisions
+
+- document-scoped vector filtering is mandatory at the interface boundary
+- SQL owns text/metadata while Pinecone owns vector values
+- deterministic vector IDs provide a stable join and cleanup mechanism
+- ingestion uses rollback and compensating cleanup across systems
+- no LLM call is made when retrieval evidence is empty or below threshold
+- external integrations are narrow, injected in tests, and lazily initialized
+- SQLite/local files keep the portfolio demo approachable; their scaling limits are explicit
 
 ## Roadmap
 
-- [x] Local RAG pipeline
-- [x] Persistent embedding storage
-- [x] PDF/DOCX ingestion
-- [x] Citation-backed grounded answers
-- [x] Pinecone vector database
-- [ ] Azure OpenAI support
-- [ ] Conversational memory
-- [ ] Multi-user authentication
-- [ ] Cloud deployment
-
-## Why I Built This
-
-I built ClientOps Copilot to deepen my understanding of production-oriented AI systems engineering beyond simple LLM wrappers.
-
-The goal was to explore:
-- Retrieval-Augmented Generation (RAG)
-- semantic search pipelines
-- embedding architectures
-- modular backend systems
-- grounded AI responses
-- full-stack AI application design
-
-This project evolved from a simple upload-and-search prototype into a persistent full-stack AI knowledge platform with modular infrastructure and scalable architecture patterns.
+v2 focuses on real client-workspace workflow and asynchronous ingestion. v3 introduces multi-user SaaS foundations and production controls. Later possibilities include briefing generation, commitment/risk tracking, version change detection, and evaluation dashboards. None are claimed as implemented; see [the staged roadmap](docs/ROADMAP.md).
 
 ## License
 

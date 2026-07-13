@@ -13,7 +13,12 @@ type ChatPanelProps = {
   onAsk: (question: string) => void;
 };
 
-export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelProps) {
+export function ChatPanel({
+  disabled,
+  isLoading,
+  response,
+  onAsk,
+}: ChatPanelProps) {
   const [question, setQuestion] = useState("");
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -27,10 +32,12 @@ export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelPro
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-sm text-cyan-200">Step 2</p>
-          <h2 className="mt-1 text-2xl font-semibold">Ask grounded questions</h2>
+          <h2 className="mt-1 text-2xl font-semibold">
+            Ask grounded questions
+          </h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-white/55">
-            Query the uploaded knowledge base and receive an answer generated from
-            retrieved chunks with citations.
+            Ask about the selected document. Answers use only retrieved sources;
+            uploaded text is treated as untrusted content.
           </p>
         </div>
 
@@ -47,7 +54,9 @@ export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelPro
               ? "Upload a document first..."
               : "Ask something about the document..."
           }
-          className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cyan-300/50"
+          aria-label="Question about selected document"
+          maxLength={2000}
+          className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/20"
         />
 
         <Button type="submit" disabled={disabled || isLoading}>
@@ -64,19 +73,24 @@ export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelPro
 
       {!response && !isLoading && !disabled && (
         <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
-          <p className="text-sm font-medium text-white/80">Ready to ask questions</p>
+          <p className="text-sm font-medium text-white/80">
+            Ready to ask questions
+          </p>
           <p className="mt-2 text-sm leading-6 text-white/45">
-            Try asking for a summary, extracting key dates, identifying risks, or
-            finding specific details from the uploaded document.
+            Try asking for a summary, extracting key dates, identifying risks,
+            or finding specific details from the uploaded document.
           </p>
         </div>
       )}
 
       {disabled && (
         <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
-          <p className="text-sm font-medium text-white/80">Upload a document to begin</p>
+          <p className="text-sm font-medium text-white/80">
+            Upload a document to begin
+          </p>
           <p className="mt-2 text-sm leading-6 text-white/45">
-            ClientOps will index the document and prepare it for grounded AI search.
+            ClientOps will index the document and prepare it for grounded AI
+            search.
           </p>
         </div>
       )}
@@ -89,9 +103,13 @@ export function ChatPanel({ disabled, isLoading, response, onAsk }: ChatPanelPro
                 Grounded answer
               </p>
 
-              {response.answer_mode && (
+              {response.status && (
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/50">
-                  {response.answer_mode === "llm" ? "LLM generated" : "Fallback"}
+                  {response.status === "supported"
+                    ? "Supported answer"
+                    : response.status === "insufficient_evidence"
+                      ? "Insufficient evidence"
+                      : "Provider unavailable"}
                 </span>
               )}
             </div>
