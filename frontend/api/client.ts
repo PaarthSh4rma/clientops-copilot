@@ -1,12 +1,17 @@
 import type {
   ChatResponse,
+  ChatContext,
   DocumentSummary,
   Readiness,
   UploadedDocument,
+  SessionDocument,
+  Workflow,
 } from "../src/types/documents";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+const DEMO_SESSION_ID = crypto.randomUUID();
 
 export class ApiError extends Error {
   status: number;
@@ -44,6 +49,7 @@ export async function uploadDocument(file: File): Promise<UploadedDocument> {
   return parse(
     await fetch(`${API_BASE_URL}/documents/upload`, {
       method: "POST",
+      headers: { "X-Demo-Session": DEMO_SESSION_ID },
       body: data,
     }),
   );
@@ -89,15 +95,24 @@ export async function chatWithDocument(params: {
   documentId: string;
   question: string;
   topK?: number;
+  workflow?: Workflow;
+  context?: ChatContext;
+  sessionDocument?: SessionDocument;
 }): Promise<ChatResponse> {
   return parse(
     await fetch(`${API_BASE_URL}/documents/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Demo-Session": DEMO_SESSION_ID,
+      },
       body: JSON.stringify({
         document_id: params.documentId,
         question: params.question,
         top_k: params.topK ?? 4,
+        workflow: params.workflow,
+        context: params.context,
+        session_document: params.sessionDocument,
       }),
     }),
   );

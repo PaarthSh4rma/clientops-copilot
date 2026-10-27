@@ -15,37 +15,44 @@ import type {
   Citation,
   ChatResponse,
   DocumentSummary,
+  Workflow,
 } from "../types/documents";
 import { CitationList } from "./CitationList";
+import { AnswerMarkdown } from "./AnswerMarkdown";
 import { Spinner } from "./ui/Spinner";
 
 const ACTIONS = [
   {
     label: "Summarise",
+    workflow: "summary",
     icon: Sparkles,
     prompt:
       "Summarise this document concisely. Focus on its purpose, scope, and most important details.",
   },
   {
     label: "Key decisions",
+    workflow: "decisions",
     icon: ClipboardCheck,
     prompt:
       "Extract the key decisions stated in this document. If a decision is ambiguous, say so.",
   },
   {
     label: "Risks & blockers",
+    workflow: "risks",
     icon: ShieldAlert,
     prompt:
       "Identify risks, blockers, constraints, or unresolved concerns explicitly supported by this document.",
   },
   {
     label: "Action items",
+    workflow: "actions",
     icon: ListChecks,
     prompt:
       "Extract action items or commitments in this document, including owners where the evidence names them.",
   },
   {
     label: "Dates",
+    workflow: "dates",
     icon: CalendarClock,
     prompt:
       "Find important dates, deadlines, milestones, or time-bound commitments in this document.",
@@ -56,7 +63,7 @@ type Props = {
   selected: DocumentSummary | null;
   isLoading: boolean;
   history: ChatResponse[];
-  onAsk: (question: string) => void;
+  onAsk: (question: string, workflow?: Workflow) => void;
   onInspect: (citation: Citation, citations: Citation[]) => void;
 };
 
@@ -103,10 +110,10 @@ export function ChatPanel({
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [history, isLoading]);
 
-  function submit(questionToAsk: string) {
+  function submit(questionToAsk: string, workflow?: Workflow) {
     const clean = questionToAsk.trim();
     if (!clean || !selected || isLoading) return;
-    onAsk(clean);
+    onAsk(clean, workflow);
     setQuestion("");
   }
 
@@ -168,16 +175,16 @@ export function ChatPanel({
               Turn source material into an answer you can verify.
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-              Use a transparent prompt action or ask your own question. Every
-              answer must clear the relevance threshold before the LLM is
-              called.
+              Explore the selected document with a workflow action, or ask a
+              specific question. Answers include source passages you can
+              inspect.
             </p>
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
-              {ACTIONS.map(({ label, icon: Icon, prompt }) => (
+              {ACTIONS.map(({ label, icon: Icon, prompt, workflow }) => (
                 <button
                   type="button"
                   key={label}
-                  onClick={() => submit(prompt)}
+                  onClick={() => submit(prompt, workflow)}
                   className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-left text-sm text-slate-300 transition hover:border-sky-400/20 hover:bg-sky-400/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
                 >
                   <Icon className="h-4 w-4 shrink-0 text-sky-300" />
@@ -203,9 +210,7 @@ export function ChatPanel({
                     </p>
                     <Outcome response={response} />
                   </div>
-                  <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">
-                    {response.answer}
-                  </p>
+                  <AnswerMarkdown>{response.answer}</AnswerMarkdown>
                   <CitationList
                     citations={response.citations}
                     onInspect={(citation) =>
@@ -229,12 +234,12 @@ export function ChatPanel({
       <div className="border-t border-white/8 bg-[#0c1016] p-3 sm:p-4">
         {selected && history.length > 0 && (
           <div className="workflow-scroll mx-auto mb-2 flex max-w-3xl gap-1 overflow-x-auto pb-1">
-            {ACTIONS.map(({ label, icon: Icon, prompt }) => (
+            {ACTIONS.map(({ label, icon: Icon, prompt, workflow }) => (
               <button
                 type="button"
                 key={label}
                 disabled={isLoading}
-                onClick={() => submit(prompt)}
+                onClick={() => submit(prompt, workflow)}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-500 transition hover:bg-white/5 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
               >
                 <Icon className="h-3 w-3" />

@@ -21,6 +21,8 @@ type Props = {
   isUploading: boolean;
   maxUploadSize: number;
   demoMode: boolean;
+  allowSessionUploads?: boolean;
+  sessionDocumentIds?: string[];
   backendAvailable: boolean;
   onUpload: (file: File) => void;
   onSelect: (id: string) => void;
@@ -44,6 +46,8 @@ export function UploadCard({
   isUploading,
   maxUploadSize,
   demoMode,
+  allowSessionUploads = false,
+  sessionDocumentIds = [],
   backendAvailable,
   onUpload,
   onSelect,
@@ -55,9 +59,10 @@ export function UploadCard({
   const [pendingDelete, setPendingDelete] = useState<DocumentSummary | null>(
     null,
   );
+  const uploadsLocked = demoMode && !allowSessionUploads;
 
   function handleFile(file?: File) {
-    if (!file || isUploading || demoMode) return;
+    if (!file || isUploading || uploadsLocked) return;
     const extension = `.${file.name.split(".").pop()?.toLowerCase()}`;
     if (!EXTENSIONS.includes(extension)) {
       setValidation("Choose a TXT, PDF, or DOCX file.");
@@ -88,14 +93,16 @@ export function UploadCard({
         </div>
         <button
           type="button"
-          disabled={demoMode || isUploading || !backendAvailable}
+          disabled={uploadsLocked || isUploading || !backendAvailable}
           onClick={() => inputRef.current?.click()}
           className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:border-sky-400/30 hover:text-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={
-            demoMode ? "Uploads disabled in public demo" : "Upload document"
+            uploadsLocked
+              ? "Uploads disabled in public demo"
+              : "Upload document"
           }
           title={
-            demoMode
+            uploadsLocked
               ? "Uploads are disabled in public demo mode"
               : "Upload document"
           }
@@ -105,9 +112,10 @@ export function UploadCard({
         <input
           ref={inputRef}
           type="file"
+          aria-label="Choose document file"
           accept=".txt,.pdf,.docx"
           className="sr-only"
-          disabled={demoMode || isUploading}
+          disabled={uploadsLocked || isUploading}
           onChange={(event) => {
             handleFile(event.target.files?.[0]);
             event.currentTarget.value = "";
@@ -115,7 +123,7 @@ export function UploadCard({
         />
       </div>
 
-      {!demoMode && backendAvailable && (
+      {!uploadsLocked && backendAvailable && (
         <div className="px-3 pt-3">
           <button
             type="button"
@@ -159,8 +167,9 @@ export function UploadCard({
         <div className="m-3 flex gap-2 rounded-xl border border-violet-400/15 bg-violet-400/[0.06] p-3 text-xs leading-5 text-violet-100/80">
           <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
-            Sample documents only. Upload and delete are locked in this public
-            demo.
+            {allowSessionUploads
+              ? "Upload your own document for this tab. Refreshing clears uploads. Extracted text is sent to AI providers; use non-sensitive files. Sample documents stay read-only."
+              : "Sample documents only. Upload and delete are locked in this public demo."}
           </span>
         </div>
       )}
@@ -243,12 +252,12 @@ export function UploadCard({
                       )}
                     />
                     {document.processing_status === "ready"
-                      ? `${formatBytes(document.file_size)} · ${document.chunk_count} sources`
+                      ? `${formatBytes(document.file_size)} · ${document.chunk_count} sources${sessionDocumentIds.includes(document.id) ? " · This tab" : ""}`
                       : document.processing_status}
                   </span>
                 </span>
               </button>
-              {!demoMode && (
+              {(!demoMode || sessionDocumentIds.includes(document.id)) && (
                 <button
                   type="button"
                   onClick={() => setPendingDelete(document)}
@@ -274,14 +283,18 @@ export function UploadCard({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="delete-title" className="font-semibold">
-                  Delete document?
+                  {sessionDocumentIds.includes(pendingDelete.id)
+                    ? "Remove uploaded document?"
+                    : "Delete document?"}
                 </h2>
                 <p className="mt-2 break-words text-sm leading-6 text-slate-400">
                   This removes{" "}
                   <strong className="text-slate-200">
                     {pendingDelete.filename}
                   </strong>
-                  , its source file, metadata, chunks, and scoped vectors.
+                  {sessionDocumentIds.includes(pendingDelete.id)
+                    ? " and its extracted content from this browser tab."
+                    : ", its source file, metadata, chunks, and scoped vectors."}
                 </p>
               </div>
               <button
@@ -309,7 +322,9 @@ export function UploadCard({
                 }}
                 className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
               >
-                Delete everywhere
+                {sessionDocumentIds.includes(pendingDelete.id)
+                  ? "Remove from tab"
+                  : "Delete everywhere"}
               </button>
             </div>
           </div>

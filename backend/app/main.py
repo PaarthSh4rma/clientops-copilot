@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes.documents import router as documents_router
 from app.api.routes.health import router as health_router
 from app.core.config import Settings, get_settings
-from app.core.demo import DemoChatLimiter
+from app.core.demo import DemoAnswerCache, DemoChatLimiter
 from app.core.logging import configure_logging
 from app.db.session import build_session_factory
 from app.integrations.embeddings import PineconeInferenceEmbeddings, SentenceTransformerEmbeddings
@@ -37,6 +37,8 @@ def create_app(
     app = FastAPI(title="ClientOps Copilot API", version="0.1.6", lifespan=lifespan)
     app.state.settings = settings
     app.state.demo_chat_limiter = DemoChatLimiter(settings.demo_chat_hourly_limit)
+    app.state.demo_upload_limiter = DemoChatLimiter(10)
+    app.state.demo_answer_cache = DemoAnswerCache()
     app.state.session_factory = build_session_factory(settings)
     if settings.serverless_demo_bootstrap:
         if not settings.demo_mode:
@@ -64,7 +66,7 @@ def create_app(
         allow_origins=settings.allowed_cors_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "DELETE"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type", "X-Demo-Session"],
     )
     app.include_router(health_router, prefix=settings.api_prefix)
     app.include_router(documents_router, prefix=settings.api_prefix)

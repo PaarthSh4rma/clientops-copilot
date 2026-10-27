@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   chatWithDocument,
@@ -18,6 +18,8 @@ import type {
   ChatResponse,
   DocumentSummary,
   Readiness,
+  SessionDocument,
+  Workflow,
 } from "./types/documents";
 
 const FALLBACK_READINESS: Readiness = {
@@ -31,6 +33,10 @@ const FALLBACK_READINESS: Readiness = {
 function App() {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
+  const [sessionDocuments, setSessionDocuments] = useState<
+    Record<string, SessionDocument>
+  >({});
   const [history, setHistory] = useState<Record<string, ChatResponse[]>>({});
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [backendAvailable, setBackendAvailable] = useState(true);
@@ -54,11 +60,12 @@ function App() {
       ([docs, ready]) => {
         if (docs.status === "fulfilled") {
           setDocuments(docs.value);
-          setSelectedId(
+          const firstId =
             docs.value.find(
               (document) => document.processing_status === "ready",
-            )?.id ?? null,
-          );
+            )?.id ?? null;
+          selectedIdRef.current = firstId;
+          setSelectedId(firstId);
           setBackendAvailable(true);
         } else {
           setBackendAvailable(false);
@@ -84,9 +91,17 @@ function App() {
     setIsUploading(true);
     try {
       const uploaded = await uploadDocument(file);
+      if (uploaded.session_document) {
+        const source = uploaded.session_document;
+        setSessionDocuments((current) => ({ ...current, [source.id]: source }));
+      }
       setDocuments((current) => [uploaded, ...current]);
       selectDocument(uploaded.id);
-      setSuccess(`${uploaded.filename} is indexed and ready.`);
+      setSuccess(
+        uploaded.session_document
+          ? uploaded.message
+          : `${uploaded.filename} is indexed and ready.`,
+      );
     } catch (caught) {
       if (
         caught instanceof ApiError &&
@@ -109,7 +124,13 @@ function App() {
   async function handleDelete(id: string) {
     clearNotices();
     try {
-      await deleteDocument(id);
+      if (sessionDocuments[id]) {
+        setSessionDocuments((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
+      } else await deleteDocument(id);
       const remaining = documents.filter((document) => document.id !== id);
       setDocuments(remaining);
       setHistory((current) => {
@@ -122,7 +143,11 @@ function App() {
           remaining.find((document) => document.processing_status === "ready")
             ?.id ?? null,
         );
-      setSuccess("Document and its indexed evidence were deleted.");
+      setSuccess(
+        sessionDocuments[id]
+          ? "Uploaded document removed from this tab."
+          : "Document and its indexed evidence were deleted.",
+      );
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -132,25 +157,37 @@ function App() {
     }
   }
 
-  async function handleAsk(question: string) {
+  async function handleAsk(question: string, workflow?: Workflow) {
     if (!selected) return;
     clearNotices();
     setIsAsking(true);
     try {
+      const previous = [...selectedHistory]
+        .reverse()
+        .find((item) => item.status === "supported" && item.citations.length);
       const response = await chatWithDocument({
         documentId: selected.id,
         question,
+        workflow,
+        context:
+          previous && !workflow
+            ? {
+                document_id: selected.id,
+                question: previous.question,
+                chunk_ids: previous.citations
+                  .map((citation) => citation.chunk_id)
+                  .slice(0, 60),
+              }
+            : undefined,
+        sessionDocument: sessionDocuments[selected.id],
       });
       setHistory((current) => ({
         ...current,
         [selected.id]: [...(current[selected.id] ?? []), response],
       }));
-      if (response.citations[0]) {
+      if (response.citations[0] && selectedIdRef.current === selected.id) {
         setActiveCitation(response.citations[0]);
         setActiveCitations(response.citations);
-      } else {
-        setActiveCitation(null);
-        setActiveCitations([]);
       }
     } catch (caught) {
       setError(
@@ -164,6 +201,7 @@ function App() {
   }
 
   function selectDocument(id: string | null) {
+    selectedIdRef.current = id;
     setSelectedId(id);
     const latestWithEvidence = id
       ? [...(history[id] ?? [])].reverse().find((item) => item.citations.length)
@@ -209,6 +247,10 @@ function App() {
               FALLBACK_READINESS.limits.max_upload_size_bytes
             }
             demoMode={readiness?.demo_mode ?? false}
+            allowSessionUploads={
+              readiness?.capabilities.session_uploads ?? false
+            }
+            sessionDocumentIds={Object.keys(sessionDocuments)}
             backendAvailable={backendAvailable}
             onUpload={handleUpload}
             onSelect={selectDocument}

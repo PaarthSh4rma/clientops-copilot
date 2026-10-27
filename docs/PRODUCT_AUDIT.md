@@ -32,13 +32,15 @@ v1.6 closes that product gap without turning the application into a multi-tenant
 ## What changed
 
 - Introduced a responsive library/workspace/evidence information architecture.
-- Added five visible prompt templates that use the unchanged grounded-chat endpoint.
+- Added five visible workflow actions that select the chosen document's source passages directly, avoiding false retrieval misses for generic prompts.
 - Preserved a question/answer timeline per document in browser memory only.
 - Made supported, insufficient-evidence, and provider-failure outcomes visually and semantically distinct.
 - Added an evidence inspector with location, preview, qualitative relevance, exact cosine similarity, and citation switching.
 - Added inline destructive confirmation, long-filename handling, stable loading shells, and actionable empty/offline states.
 - Enforced checksum duplicate detection before file/vector writes and returned the existing document ID for selection.
-- Added `DEMO_MODE`, locked mutation routes, exposed capability flags, bundled synthetic documents, a real-pipeline seeder, and a bounded process-local chat guard.
+- Added `DEMO_MODE`, protected shared samples, capability flags, synthetic documents, a real-pipeline seeder, per-session soft limits, and bounded sample-answer caching.
+- Enabled temporary TXT/PDF/DOCX uploads in the public deployment without paid storage; uploaded text and embeddings stay in browser memory between requests and are not added to shared SQL, Pinecone vector storage, or the answer cache.
+- Added source-backed follow-up context, safe Markdown rendering, and retained evidence when a later question has insufficient support.
 - Added explicit OpenRouter timeout and one retry; removed unnecessary credentialed CORS.
 - Added deterministic retrieval evaluation and focused UI interaction tests.
 - Removed obsolete starter assets, CSS, and unused card/button/status components.
@@ -46,8 +48,8 @@ v1.6 closes that product gap without turning the application into a multi-tenant
 ## Guarantees retained
 
 - Vector search and deletion require a document ID filter.
-- SQL owns chunk text/metadata/vector IDs; Pinecone owns vectors; storage owns bytes.
-- Relevance gating happens before the LLM call.
+- For durable documents, SQL owns text/metadata/vector IDs, Pinecone owns vectors, and storage owns bytes. Browser-session uploads carry their own bounded text/vector state.
+- Specific questions pass a relevance gate; document-wide workflows and contextual follow-ups select explicit source passages without fabricating similarity scores.
 - Insufficient evidence is not presented as success or provider failure.
 - Uploaded text remains untrusted prompt content.
 - Failed ingestion rolls back SQL and compensates vectors/files.

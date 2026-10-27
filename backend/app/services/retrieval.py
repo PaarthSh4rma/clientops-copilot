@@ -17,3 +17,19 @@ class RetrievalService:
             for match in matches
             if match.score >= self.min_score and match.id in by_vector
         ]
+
+    def document_passages(self, document: Document, chunk_ids: list[int] | None = None) -> list[dict]:
+        """Read selected-document evidence for whole-document tasks or cited follow-ups.
+
+        These are direct source selections, not similarity matches, so no score is invented.
+        """
+        selected = set(chunk_ids) if chunk_ids is not None else None
+        passages, size = [], 0
+        for chunk in sorted(document.chunks, key=lambda item: item.chunk_index):
+            if selected is not None and chunk.id not in selected:
+                continue
+            if len(passages) >= 60 or size + len(chunk.text) > 48000:
+                break
+            passages.append({"chunk": chunk, "text": chunk.text, "score": None})
+            size += len(chunk.text)
+        return passages

@@ -8,7 +8,9 @@ function sourceLabel(citation: Citation) {
     : citation.location || `Chunk ${citation.chunk_index + 1}`;
 }
 
-function relevance(score: number) {
+function relevance(score: number | null) {
+  if (score === null)
+    return { label: "Document passage", color: "text-sky-300" };
   if (score >= 0.75)
     return { label: "Strong match", color: "text-emerald-300" };
   if (score >= 0.5) return { label: "Relevant match", color: "text-sky-300" };
@@ -83,8 +85,10 @@ export function EvidencePanel({
               </span>
             </div>
             <p className="mt-2 font-mono text-[10px] text-slate-600">
-              cosine similarity {selected.relevance_score.toFixed(3)} · chunk{" "}
-              {selected.chunk_index + 1}
+              {selected.relevance_score === null
+                ? "Selected source"
+                : `cosine similarity ${selected.relevance_score.toFixed(3)}`}{" "}
+              · chunk {selected.chunk_index + 1}
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -122,7 +126,7 @@ export function EvidencePanel({
                       [{index + 1}] {sourceLabel(citation)}
                     </span>
                     <span className="font-mono text-[10px] text-slate-600">
-                      {citation.relevance_score.toFixed(2)}
+                      {citation.relevance_score?.toFixed(2) ?? "Source"}
                     </span>
                   </button>
                 ))}
