@@ -1,0 +1,16 @@
+Beacon Health — Integration Security Review
+
+Scope
+This review covers the document exchange integration used during the implementation pilot. It does not certify the wider client environment.
+
+Controls agreed
+Service credentials must be stored in the deployment secret manager. Access is limited to the implementation service account. Audit logs will retain integration events for 90 days.
+
+Decisions and owners
+Morgan approved IP allow-listing for the pilot environment. Casey owns the key-rotation procedure and must complete the first rotation by 12 December 2026.
+
+Open risks
+The disaster-recovery contact list has not been validated. The client must also confirm the production egress addresses before allow-listing can be completed.
+
+Launch gate
+Production activation must not proceed until key rotation is demonstrated and the egress address list is approved.

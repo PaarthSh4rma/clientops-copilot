@@ -8,10 +8,32 @@ import type {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+export class ApiError extends Error {
+  status: number;
+  detail?: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    status: number,
+    detail?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.detail ?? `Request failed (${response.status})`);
+    const detail = error?.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : typeof detail?.message === "string"
+          ? detail.message
+          : `Request failed (${response.status})`;
+    throw new ApiError(message, response.status, detail);
   }
   return response.json();
 }
@@ -53,6 +75,12 @@ export async function getReadiness(): Promise<Readiness> {
     limits: {
       max_upload_size_bytes:
         body.limits?.max_upload_size_bytes ?? 10 * 1024 * 1024,
+    },
+    demo_mode: Boolean(body.demo_mode),
+    capabilities: body.capabilities ?? {
+      upload: true,
+      delete: true,
+      grounded_chat: true,
     },
   };
 }

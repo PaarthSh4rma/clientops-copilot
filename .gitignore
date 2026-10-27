@@ -7,6 +7,7 @@ __pycache__/
 node_modules/
 dist/
 .next/
+.vercel/
 .DS_Store
 testfiles/
 backend/uploads/

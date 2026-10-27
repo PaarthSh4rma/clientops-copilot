@@ -11,14 +11,20 @@ class LLMProvider(Protocol):
 
 
 class OpenRouterLLM:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, timeout_seconds: float = 30):
         self._api_key = api_key
         self._client = None
         self._model = model
+        self._timeout_seconds = timeout_seconds
 
     def _get_client(self) -> OpenAI:
         if self._client is None:
-            self._client = OpenAI(api_key=self._api_key, base_url="https://openrouter.ai/api/v1")
+            self._client = OpenAI(
+                api_key=self._api_key,
+                base_url="https://openrouter.ai/api/v1",
+                timeout=self._timeout_seconds,
+                max_retries=1,
+            )
         return self._client
 
     def answer(self, question: str, chunks: list[dict]) -> str:

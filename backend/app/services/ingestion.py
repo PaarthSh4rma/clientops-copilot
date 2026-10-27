@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import IngestionError
+from app.core.exceptions import DuplicateDocumentError, IngestionError
 from app.integrations.embeddings import EmbeddingProvider
 from app.integrations.file_storage import LocalFileStorage
 from app.integrations.vector_store import VectorRecord, VectorStore
@@ -43,6 +43,9 @@ class IngestionService:
         document_id = str(uuid4())
         stored_filename = f"{document_id}{extension}"
         checksum = hashlib.sha256(content).hexdigest()
+        existing = DocumentRepository(self.db).get_by_checksum(checksum)
+        if existing:
+            raise DuplicateDocumentError(existing.id, existing.original_filename)
         path = self.storage.write(stored_filename, content)
         vector_upsert_attempted = False
         try:

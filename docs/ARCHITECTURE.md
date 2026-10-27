@@ -1,10 +1,10 @@
 # Architecture
 
-## Current v1.5 architecture
+## Current v1.6 architecture
 
 ```mermaid
 flowchart LR
-  UI["React single-workspace UI"] --> API["FastAPI routes"]
+  UI["React library / workspace / evidence UI"] --> API["FastAPI routes + demo policy"]
   API --> SVC["Ingestion / retrieval / chat services"]
   SVC --> SQL["SQLite: documents, chunks, status, vector IDs"]
   SVC --> FS["Local file storage: source files"]
@@ -22,8 +22,8 @@ Routes validate/co-ordinate HTTP work. Services own workflows. Repositories isol
 | Document identity, filename, type, size, checksum, processing state | relational database |
 | Chunk text, index, source location, vector identifier | relational database |
 | Vector values and similarity results | Pinecone |
-| Original uploaded bytes | file-storage abstraction (local filesystem in v1.5) |
-| Current question/answer UI state | browser memory for the current session only |
+| Original uploaded bytes | file-storage abstraction (local filesystem in v1.6) |
+| Per-document question/answer UI state | browser memory for the current session only |
 
 Embedding arrays are deliberately absent from SQLite. Pinecone metadata contains only isolation/join identifiers, not a second copy of chunk text.
 
@@ -73,6 +73,26 @@ sequenceDiagram
   end
 ```
 
+The five workflow actions are transparent question templates in the React client. Summary, decision, risk, action-item, and date requests use this exact flow; none bypasses retrieval or claims deterministic structured extraction.
+
+## Product state and evidence interaction
+
+The frontend keeps the document library persistent on desktop, a selected-document conversation in the centre, and the retrieved evidence in a right inspector. On narrower viewports, the evidence inspector becomes a drawer. Selecting another document changes both the retrieval target and the visible in-memory history; histories are never persisted to the server.
+
+Citation interaction uses the `source_preview`, page/paragraph location, and score already returned by grounded chat. There is no parallel source-retrieval endpoint or original-document renderer.
+
+## Demo mode boundary
+
+`DEMO_MODE=true` is enforced in FastAPI rather than only hiding controls:
+
+- upload returns 403
+- delete returns 403
+- document listing and document-scoped grounded chat remain available
+- an in-process fixed-window limiter bounds chat requests
+- `/ready` exposes mode and capability flags to the frontend
+
+Bundled synthetic documents are indexed once through the normal ingestion pipeline. Demo mode does not fake embeddings, retrieval, citations, or answers, and it is not an authentication boundary.
+
 ## Deletion and boundaries
 
 Deletion removes vectors with the same document filter, removes the local source, and then commits cascading SQL deletion. An interrupted deletion returns 503 and records a failed status for retry where the database remains available; the API never reports complete success after a critical cleanup failure. Distributed rollback is still imperfect because deleted vector values and source bytes cannot be reconstructed, so production storage/jobs should support durable retry and audit.
@@ -81,4 +101,4 @@ Stable API errors are returned without secrets or provider internals. Liveness p
 
 ## Intentionally deferred
 
-Authentication, organisations, tenant isolation, object storage, PostgreSQL, jobs, OCR, durable chat history, audit trails, usage controls, provider abstraction beyond the current narrow interfaces, and production observability are not v1.5 features.
+Authentication, organisations, tenant isolation, object storage, PostgreSQL, jobs, OCR, durable chat history, audit trails, full distributed rate limiting, provider abstraction beyond the current narrow interfaces, and production observability are not v1.6 features.

@@ -10,10 +10,11 @@ export function Toast({ type, message }: ToastProps) {
 
   return (
     <div
+      role={isSuccess ? "status" : "alert"}
       className={
         isSuccess
-          ? "mb-5 flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"
-          : "mb-5 flex items-center gap-3 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-100"
+          ? "flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-[#102019] px-4 py-3 text-sm text-emerald-100 shadow-xl"
+          : "flex items-center gap-3 rounded-xl border border-red-400/20 bg-[#241316] px-4 py-3 text-sm text-red-100 shadow-xl"
       }
     >
       {isSuccess ? (

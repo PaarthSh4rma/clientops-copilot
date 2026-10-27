@@ -40,4 +40,10 @@ export type Readiness = {
   status: "ready" | "not_ready";
   dependencies: Record<string, string>;
   limits: { max_upload_size_bytes: number };
+  demo_mode: boolean;
+  capabilities: {
+    upload: boolean;
+    delete: boolean;
+    grounded_chat: boolean;
+  };
 };

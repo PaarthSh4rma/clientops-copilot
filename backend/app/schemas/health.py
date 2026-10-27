@@ -10,3 +10,5 @@ class ReadinessResponse(BaseModel):
     status: str
     dependencies: dict[str, str]
     limits: dict[str, int]
+    demo_mode: bool
+    capabilities: dict[str, bool]

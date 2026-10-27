@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-import fitz
-from docx import Document as DocxDocument
-
 from app.core.exceptions import IngestionError
 
 
@@ -20,6 +17,8 @@ def extract_parts(path: Path, extension: str) -> list[ExtractedPart]:
             text = path.read_text(encoding="utf-8")
             return [ExtractedPart(text=text, location="Text document")]
         if extension == ".pdf":
+            import fitz
+
             with fitz.open(path) as pdf:
                 if pdf.needs_pass:
                     raise IngestionError("Encrypted PDFs are not supported")
@@ -27,6 +26,8 @@ def extract_parts(path: Path, extension: str) -> list[ExtractedPart]:
                     ExtractedPart(page.get_text("text"), page.number + 1, f"Page {page.number + 1}") for page in pdf
                 ]
         if extension == ".docx":
+            from docx import Document as DocxDocument
+
             doc = DocxDocument(path)
             return [
                 ExtractedPart(p.text, location=f"Paragraph {i + 1}")

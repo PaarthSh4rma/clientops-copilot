@@ -8,7 +8,8 @@ class RetrievalService:
         self.embeddings, self.vectors, self.min_score = embeddings, vectors, min_score
 
     def retrieve(self, document: Document, question: str, top_k: int) -> list[dict]:
-        query_vector = self.embeddings.embed([question])[0]
+        embed_query = getattr(self.embeddings, "embed_query", None)
+        query_vector = embed_query(question) if embed_query else self.embeddings.embed([question])[0]
         matches = self.vectors.search(document_id=document.id, query_vector=query_vector, top_k=top_k)
         by_vector = {chunk.vector_id: chunk for chunk in document.chunks}
         return [

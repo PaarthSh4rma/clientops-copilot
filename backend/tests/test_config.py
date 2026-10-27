@@ -53,3 +53,30 @@ def test_app_factory_settings_control_default_database_dependency(tmp_path):
     )
     with TestClient(app) as client:
         assert client.get("/documents").json() == {"documents": []}
+
+
+def test_combined_deployment_serves_frontend_without_shadowing_api(tmp_path):
+    frontend = tmp_path / "static"
+    frontend.mkdir()
+    (frontend / "index.html").write_text("<h1>ClientOps recruiter demo</h1>", encoding="utf-8")
+    settings = Settings(
+        _env_file=None,
+        database_url=f"sqlite:///{tmp_path / 'combined.db'}",
+        upload_directory=tmp_path / "uploads",
+        frontend_directory=frontend,
+    )
+    Base.metadata.create_all(build_engine(settings))
+    app = create_app(
+        settings,
+        embeddings=FakeEmbeddings(),
+        vector_store=FakeVectors(),
+        llm=FakeLLM(),
+        storage=LocalFileStorage(settings.upload_directory),
+    )
+    with TestClient(app) as client:
+        assert client.get("/").text == "<h1>ClientOps recruiter demo</h1>"
+        assert client.get("/health").json()["status"] == "ok"
+
+
+def test_blank_frontend_directory_is_disabled():
+    assert Settings(_env_file=None, frontend_directory="").frontend_directory is None
