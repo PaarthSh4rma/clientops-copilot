@@ -2,7 +2,11 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import type { ChatResponse, DocumentSummary } from "./types/documents";
+import type {
+  ChatResponse,
+  DocumentSummary,
+  SessionDocument,
+} from "./types/documents";
 
 const DOCUMENTS: DocumentSummary[] = [
   {
@@ -153,6 +157,112 @@ describe("ClientOps workspace", () => {
       expect(
         screen.getByLabelText("Uploads disabled in public demo"),
       ).toBeDisabled(),
+    );
+  });
+
+  it("uploads a tab-scoped document, sends follow-up evidence, and removes it locally", async () => {
+    const source: SessionDocument = {
+      id: "uploaded-1",
+      filename: "aurora.txt",
+      content_type: "text/plain",
+      file_size: 70,
+      checksum: "b".repeat(64),
+      chunks: [
+        {
+          id: 1,
+          chunk_index: 0,
+          text: "Taylor owns the review.",
+          page_number: null,
+          location: "Text document",
+          vector_id: "session:uploaded-1:0",
+          embedding: [1, 0],
+        },
+      ],
+    };
+    const requests: Record<string, unknown>[] = [];
+    const uploaded = {
+      ...DOCUMENTS[0],
+      id: source.id,
+      filename: source.filename,
+      session_document: source,
+      message: "Document ready in this browser tab.",
+    };
+    const api = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/ready"))
+        return new Response(
+          JSON.stringify({
+            ...READINESS,
+            demo_mode: true,
+            capabilities: {
+              upload: true,
+              delete: false,
+              grounded_chat: true,
+              session_uploads: true,
+            },
+          }),
+        );
+      if (url.endsWith("/documents"))
+        return new Response(JSON.stringify({ documents: DOCUMENTS }));
+      if (url.endsWith("/documents/upload"))
+        return new Response(JSON.stringify(uploaded), { status: 201 });
+      if (url.endsWith("/documents/chat")) {
+        const body = JSON.parse(String(init?.body));
+        requests.push(body);
+        const answer = response("supported");
+        return new Response(
+          JSON.stringify({
+            ...answer,
+            document_id: source.id,
+            filename: source.filename,
+            question: body.question,
+            citations: answer.citations.map((citation) => ({
+              ...citation,
+              document_id: source.id,
+              filename: source.filename,
+              relevance_score: null,
+            })),
+          }),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText(/Upload your own document for this tab/);
+    await user.upload(
+      screen.getByLabelText("Choose document file"),
+      new File([source.chunks[0].text], source.filename, {
+        type: "text/plain",
+      }),
+    );
+    await screen.findByRole("button", { name: "Delete aurora.txt" });
+    await user.click(screen.getByRole("button", { name: "Summarise" }));
+    await screen.findByText("The pilot launches in November.");
+    expect(requests[0].workflow).toBe("summary");
+    expect(requests[0].session_document).toEqual(source);
+    expect(screen.getAllByText("Document passage").length).toBeGreaterThan(0);
+    await user.type(
+      screen.getByRole("textbox", { name: "Question about selected document" }),
+      "so what should we do?",
+    );
+    await user.click(screen.getByRole("button", { name: "Ask question" }));
+    await waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[1].context).toEqual({
+      document_id: source.id,
+      question: requests[0].question,
+      chunk_ids: [1],
+    });
+    await user.click(screen.getByRole("button", { name: "Delete aurora.txt" }));
+    await user.click(screen.getByRole("button", { name: "Remove from tab" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Delete aurora.txt" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(api.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(
+      false,
     );
   });
 });

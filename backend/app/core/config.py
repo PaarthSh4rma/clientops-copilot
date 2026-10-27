@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     provider_timeout_seconds: float = Field(30, ge=1, le=120)
     demo_mode: bool = False
     serverless_demo_bootstrap: bool = False
+    allow_session_uploads: bool = False
     demo_chat_hourly_limit: int = Field(40, ge=1, le=1000)
     log_level: str = "INFO"
 

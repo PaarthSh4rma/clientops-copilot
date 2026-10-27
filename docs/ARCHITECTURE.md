@@ -73,7 +73,11 @@ sequenceDiagram
   end
 ```
 
-The five workflow actions are transparent question templates in the React client. Summary, decision, risk, action-item, and date requests use this exact flow; none bypasses retrieval or claims deterministic structured extraction.
+The five workflow actions carry explicit intent. Summary, decision, risk, action-item, and date requests select bounded source passages from the chosen document directly; they do not reject the document because a generic prompt has a low semantic score. Direct selections have a null similarity score and are labelled as document passages. Free-form specific questions continue through the thresholded semantic search above. Contextual follow-ups carry the previous question and cited chunk IDs, which are resolved only within the selected document; generated answer text is never reused as source evidence.
+
+### Browser-session uploads on Vercel
+
+TXT/PDF/DOCX files are validated and extracted in a temporary directory, embedded through Pinecone Inference, and returned as bounded document state to the browser. React retains the chunks and embeddings until refresh or removal. Chat sends that state back to an otherwise stateless API, which searches the supplied vectors in memory. Uploaded source material does not enter the shared SQL database, Pinecone vector index, or answer cache. Provider calls still receive the text needed for embeddings and answers. Durable local ingestion retains the SQL/file/vector lifecycle above.
 
 ## Product state and evidence interaction
 
@@ -85,10 +89,10 @@ Citation interaction uses the `source_preview`, page/paragraph location, and sco
 
 `DEMO_MODE=true` is enforced in FastAPI rather than only hiding controls:
 
-- upload returns 403
+- persistent upload returns 403 unless temporary session uploads are explicitly enabled
 - delete returns 403
 - document listing and document-scoped grounded chat remain available
-- an in-process fixed-window limiter bounds chat requests
+- a per-browser-session process-local soft limit bounds new AI calls; successful sample answers are cached, and retrieval misses are not charged
 - `/ready` exposes mode and capability flags to the frontend
 
 Bundled synthetic documents are indexed once through the normal ingestion pipeline. Demo mode does not fake embeddings, retrieval, citations, or answers, and it is not an authentication boundary.

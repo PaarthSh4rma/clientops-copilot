@@ -28,12 +28,15 @@ def extract_parts(path: Path, extension: str) -> list[ExtractedPart]:
         if extension == ".docx":
             from docx import Document as DocxDocument
 
-            doc = DocxDocument(path)
-            return [
-                ExtractedPart(p.text, location=f"Paragraph {i + 1}")
-                for i, p in enumerate(doc.paragraphs)
-                if p.text.strip()
-            ]
+            try:
+                doc = DocxDocument(path)
+                return [
+                    ExtractedPart(p.text, location=f"Paragraph {i + 1}")
+                    for i, p in enumerate(doc.paragraphs)
+                    if p.text.strip()
+                ]
+            except Exception as exc:
+                raise IngestionError("The DOCX document is unreadable or malformed") from exc
     except IngestionError:
         raise
     except (OSError, UnicodeError, ValueError, RuntimeError) as exc:

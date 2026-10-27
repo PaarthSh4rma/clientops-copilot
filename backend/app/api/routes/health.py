@@ -41,8 +41,9 @@ def readiness(
         limits={"max_upload_size_bytes": settings.max_upload_size_bytes},
         demo_mode=settings.demo_mode,
         capabilities={
-            "upload": not settings.demo_mode,
+            "upload": not settings.demo_mode or settings.allow_session_uploads,
             "delete": not settings.demo_mode,
             "grounded_chat": True,
+            **({"session_uploads": True} if settings.allow_session_uploads else {}),
         },
     )

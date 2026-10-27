@@ -7,6 +7,8 @@ os.environ.update(
     APP_ENVIRONMENT="production",
     API_PREFIX="/api",
     DEMO_MODE="true",
+    ALLOW_SESSION_UPLOADS="true",
+    MAX_UPLOAD_SIZE_BYTES=str(3 * 1024 * 1024),
     SERVERLESS_DEMO_BOOTSTRAP="true",
     DATABASE_URL="sqlite:////tmp/clientops-recruiter-demo.db",
     UPLOAD_DIRECTORY="/tmp/clientops-recruiter-uploads",
@@ -15,7 +17,7 @@ os.environ.update(
     PINECONE_EMBEDDING_MODEL="llama-text-embed-v2",
     PINECONE_INDEX_NAME="clientops-recruiter-demo",
     OPENROUTER_MODEL="openrouter/free",
-    DEMO_CHAT_HOURLY_LIMIT="15",
+    DEMO_CHAT_HOURLY_LIMIT="30",
     PROVIDER_TIMEOUT_SECONDS="45",
     ALLOWED_CORS_ORIGINS="",
 )

@@ -208,7 +208,13 @@ def test_demo_mode_caps_chat_requests(client, app_context):
     client.app.state.demo_chat_limiter = DemoChatLimiter(1)
     payload = {"document_id": document["id"], "question": "contract"}
     assert client.post("/documents/chat", json=payload).status_code == 200
+    # Repeated successful sample answers are cached and do not use another AI call.
+    assert client.post("/documents/chat", json=payload).status_code == 200
+    payload["question"] = "What are the delivery commitments?"
     assert client.post("/documents/chat", json=payload).status_code == 429
+    assert (
+        client.post("/documents/chat", json=payload, headers={"X-Demo-Session": "another-visitor"}).status_code == 200
+    )
 
 
 def test_readiness_degrades_when_vector_store_is_unavailable(client, app_context):
