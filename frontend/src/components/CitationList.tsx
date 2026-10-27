@@ -1,32 +1,33 @@
+import { BookOpenText } from "lucide-react";
 import type { Citation } from "../types/documents";
 
-export function CitationList({ citations }: { citations: Citation[] }) {
+function sourceLabel(citation: Citation) {
+  if (citation.page_number) return `Page ${citation.page_number}`;
+  return citation.location || `Chunk ${citation.chunk_index + 1}`;
+}
+
+export function CitationList({
+  citations,
+  onInspect,
+}: {
+  citations: Citation[];
+  onInspect: (citation: Citation) => void;
+}) {
   if (!citations.length) return null;
   return (
-    <div className="mt-5 space-y-3">
-      <p className="text-xs uppercase tracking-[0.2em] text-white/35">
-        Sources used
-      </p>
-      {citations.map((citation) => (
-        <article
+    <div className="mt-4 flex flex-wrap gap-2" aria-label="Evidence used">
+      {citations.map((citation, index) => (
+        <button
+          type="button"
           key={citation.chunk_id}
-          className="rounded-2xl border border-white/10 bg-black/20 p-4"
+          onClick={() => onInspect(citation)}
+          className="inline-flex max-w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1.5 text-left text-[11px] text-slate-400 transition hover:border-sky-400/30 hover:text-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         >
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-sm font-medium">
-              {citation.filename} ·{" "}
-              {citation.page_number
-                ? `page ${citation.page_number}`
-                : citation.location || `chunk ${citation.chunk_index + 1}`}
-            </p>
-            <span className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs text-cyan-200">
-              {citation.relevance_score.toFixed(3)}
-            </span>
-          </div>
-          <p className="text-sm leading-6 text-white/55">
-            {citation.source_preview}
-          </p>
-        </article>
+          <BookOpenText className="h-3 w-3 shrink-0" />
+          <span className="truncate">
+            [{index + 1}] {sourceLabel(citation)}
+          </span>
+        </button>
       ))}
     </div>
   );

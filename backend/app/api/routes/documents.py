@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings
-from app.core.exceptions import IngestionError
+from app.core.exceptions import DuplicateDocumentError, IngestionError
 from app.db.session import get_db
 from app.dependencies import get_app_settings, get_embeddings, get_llm, get_storage, get_vector_store
 from app.models import ProcessingStatus
@@ -48,6 +48,8 @@ async def upload_document(
     vectors=Depends(get_vector_store),
     settings: Settings = Depends(get_app_settings),
 ):
+    if settings.demo_mode:
+        raise HTTPException(status_code=403, detail="Uploads are disabled in the public demo")
     content = await file.read(settings.max_upload_size_bytes + 1)
     try:
         document, preview = await run_in_threadpool(
@@ -56,6 +58,11 @@ async def upload_document(
             file.content_type or "",
             content,
         )
+    except DuplicateDocumentError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": str(exc), "document_id": exc.document_id, "code": "duplicate_document"},
+        ) from exc
     except IngestionError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -79,6 +86,7 @@ def get_document(document_id: str, db: Session = Depends(get_db)):
 @router.post("/chat", response_model=ChatResponse)
 def chat_document(
     request: ChatRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     embeddings=Depends(get_embeddings),
     vectors=Depends(get_vector_store),
@@ -90,14 +98,25 @@ def chat_document(
         raise HTTPException(status_code=404, detail="Document not found")
     if document.processing_status is not ProcessingStatus.ready:
         raise HTTPException(status_code=409, detail="Document is not ready for questions")
+    if settings.demo_mode and not http_request.app.state.demo_chat_limiter.consume():
+        raise HTTPException(
+            status_code=429,
+            detail="The public demo has reached its hourly question limit. Please try again later or run locally.",
+        )
     retrieval = RetrievalService(embeddings, vectors, settings.retrieval_min_score)
     return ChatService(retrieval, llm).answer(document, request.question, request.top_k or settings.retrieval_top_k)
 
 
 @router.delete("/{document_id}", response_model=DeleteResponse)
 def delete_document(
-    document_id: str, db: Session = Depends(get_db), storage=Depends(get_storage), vectors=Depends(get_vector_store)
+    document_id: str,
+    db: Session = Depends(get_db),
+    storage=Depends(get_storage),
+    vectors=Depends(get_vector_store),
+    settings: Settings = Depends(get_app_settings),
 ):
+    if settings.demo_mode:
+        raise HTTPException(status_code=403, detail="Deletion is disabled in the public demo")
     document = DocumentRepository(db).get(document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")

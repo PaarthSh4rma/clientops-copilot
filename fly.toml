@@ -1,0 +1,39 @@
+app = "paarth-clientops-copilot"
+primary_region = "syd"
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  APP_ENVIRONMENT = "production"
+  ALLOWED_CORS_ORIGINS = ""
+  DATABASE_URL = "sqlite:////data/clientops.db"
+  DEMO_CHAT_HOURLY_LIMIT = "40"
+  DEMO_MODE = "true"
+  FRONTEND_DIRECTORY = "/app/static"
+  LOG_LEVEL = "INFO"
+  PROVIDER_TIMEOUT_SECONDS = "20"
+  UPLOAD_DIRECTORY = "/data/uploads"
+
+[[mounts]]
+  source = "clientops_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

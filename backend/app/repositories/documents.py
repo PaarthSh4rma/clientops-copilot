@@ -17,6 +17,9 @@ class DocumentRepository:
     def list(self) -> list[Document]:
         return list(self.db.scalars(select(Document).order_by(Document.created_at.desc())))
 
+    def get_by_checksum(self, checksum: str) -> Document | None:
+        return self.db.scalar(select(Document).where(Document.checksum == checksum))
+
     def add(self, document: Document) -> None:
         self.db.add(document)
 

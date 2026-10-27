@@ -1,36 +1,22 @@
 # Product Roadmap
 
-## v1.5 — Trustworthy single-workspace foundation
+## Shipped foundation
 
-Implemented in this milestone: document-scoped vector retrieval, deliberate SQL/vector/file ownership, migrations, typed configuration, incremental backend modules, safe bounded ingestion with compensation, meaningful source locations, thresholded grounded answers, explicit provider outcomes, lifecycle/readiness APIs, a real document-library UI, tests, CI, Docker-based local setup, and honest product documentation.
+The current portfolio product includes trustworthy scoped retrieval, deliberate persistence ownership, rollback/cleanup, lifecycle APIs, migrations, readiness, a polished three-pane workflow, session question history, transparent operational prompts, evidence inspection, duplicate detection, safe demo controls, deterministic retrieval evaluation, frontend interaction tests, CI, and Docker-based local setup.
 
-This remains a synchronous, single-workspace portfolio prototype without authentication.
+## Next justified step
 
-## v2 — Product workflow
+Deploy the controlled demo topology with synthetic documents, persistent volumes, provider budgets, and host-level rate limiting. Capture verified desktop/mobile screenshots and add the live URL only after that environment is stable.
 
-- persistent document library organised into collections or client workspaces
-- richer current-workspace chat history and source viewer
-- summaries plus risk, decision, commitment, and action extraction
-- asynchronous ingestion with visible job status and retry
-- deployed demonstration environment using non-sensitive sample data
-- retrieval evaluation set and basic quality telemetry
+## Future only when real usage justifies it
 
-## v3 — Multi-user SaaS foundation
+- asynchronous ingestion with durable status/retry for larger documents
+- original PDF/DOCX rendering with citation deep-links
+- OCR and deliberate table extraction
+- retrieval telemetry and a larger labelled evaluation corpus
+- PostgreSQL/object storage when multi-instance hosting is required
+- durable conversation history when users need to resume work
 
-- authentication, organisations, memberships, and workspace authorization
-- tenant isolation in SQL, vector namespaces/filters, storage paths, and tests
-- PostgreSQL and object storage
-- durable background jobs, retries, and idempotency
-- audit events, retention/deletion controls, usage limits, and production observability
-- security/privacy review and operational runbooks
+## Separate SaaS track, intentionally out of scope
 
-## Later differentiators
-
-- client briefing generation
-- commitment and risk tracking across sources
-- meeting-note ingestion
-- change detection between document versions
-- reusable team workflows
-- deliberate provider choices and evaluation dashboards
-
-These sections are product options, not implemented capabilities or commitments.
+Authentication, organisations, tenant authorization, billing, audit events, retention controls, background workers, and production observability belong to a different product phase. They should not be added merely to make this portfolio application look larger.

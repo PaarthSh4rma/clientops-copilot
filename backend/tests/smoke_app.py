@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import Settings
 from app.core.exceptions import ProviderError
+from app.db.base import Base
 from app.db.session import get_db
 from app.integrations.file_storage import LocalFileStorage
 from app.main import create_app
@@ -38,10 +39,9 @@ settings = Settings(
     upload_directory="/tmp/clientops-http-smoke-uploads",
     max_upload_size_bytes=10 * 1024 * 1024,
 )
-sessions = sessionmaker(
-    bind=create_engine(settings.database_url, connect_args={"check_same_thread": False}),
-    expire_on_commit=False,
-)
+engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
+Base.metadata.create_all(engine)
+sessions = sessionmaker(bind=engine, expire_on_commit=False)
 vectors = SmokeVectors()
 llm = SmokeLLM()
 app = create_app(

@@ -1,9 +1,16 @@
-import { FileText, Trash2, UploadCloud } from "lucide-react";
-import { useState } from "react";
+import {
+  AlertCircle,
+  FileText,
+  LockKeyhole,
+  Plus,
+  Trash2,
+  UploadCloud,
+  X,
+} from "lucide-react";
+import { useRef, useState } from "react";
 import type { DocumentSummary } from "../types/documents";
-import { Card } from "./ui/Card";
-import { Spinner } from "./ui/Spinner";
 import { cn } from "../lib/cn";
+import { Spinner } from "./ui/Spinner";
 
 const EXTENSIONS = [".txt", ".pdf", ".docx"];
 
@@ -13,10 +20,22 @@ type Props = {
   isLoading: boolean;
   isUploading: boolean;
   maxUploadSize: number;
+  demoMode: boolean;
+  backendAvailable: boolean;
   onUpload: (file: File) => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
 };
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function extensionFor(document: DocumentSummary) {
+  return document.filename.split(".").pop()?.toUpperCase() || "FILE";
+}
 
 export function UploadCard({
   documents,
@@ -24,129 +43,278 @@ export function UploadCard({
   isLoading,
   isUploading,
   maxUploadSize,
+  demoMode,
+  backendAvailable,
   onUpload,
   onSelect,
   onDelete,
 }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DocumentSummary | null>(
+    null,
+  );
+
   function handleFile(file?: File) {
-    if (!file || isUploading) return;
+    if (!file || isUploading || demoMode) return;
     const extension = `.${file.name.split(".").pop()?.toLowerCase()}`;
-    if (!EXTENSIONS.includes(extension))
-      return setValidation("Choose a TXT, PDF, or DOCX file.");
-    if (file.size > maxUploadSize)
-      return setValidation(
-        `File must be ${(maxUploadSize / 1024 / 1024).toFixed(0)} MB or smaller.`,
-      );
-    if (file.size === 0) return setValidation("The selected file is empty.");
+    if (!EXTENSIONS.includes(extension)) {
+      setValidation("Choose a TXT, PDF, or DOCX file.");
+      return;
+    }
+    if (file.size > maxUploadSize) {
+      setValidation(`File must be ${formatBytes(maxUploadSize)} or smaller.`);
+      return;
+    }
+    if (file.size === 0) {
+      setValidation("The selected file is empty.");
+      return;
+    }
     setValidation(null);
     onUpload(file);
   }
+
   return (
-    <Card>
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <aside className="flex min-h-0 flex-col border-b border-white/8 bg-[#0c1016] lg:border-r lg:border-b-0">
+      <div className="flex items-start justify-between gap-3 border-b border-white/8 px-4 py-4">
         <div>
-          <p className="text-sm text-cyan-200">Document library</p>
-          <h2 className="mt-1 text-2xl font-semibold">Client knowledge</h2>
-          <p className="mt-2 text-sm leading-6 text-white/55">
-            Single-workspace prototype. Files stay on this server; answers are
-            scoped to the selected document.
+          <p className="text-sm font-semibold">Document library</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {documents.length}{" "}
+            {documents.length === 1 ? "document" : "documents"} · one selected
+            at a time
           </p>
         </div>
-        <FileText className="h-6 w-6 text-white/40" />
-      </div>
-      <label
-        aria-label="Upload a document"
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
-        }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setIsDragging(false);
-          handleFile(e.dataTransfer.files?.[0]);
-        }}
-        className={cn(
-          "flex cursor-pointer flex-col items-center rounded-3xl border border-dashed px-6 py-7 text-center transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-300/30",
-          isDragging
-            ? "border-cyan-300/70 bg-cyan-300/10"
-            : "border-white/15 bg-black/20",
-        )}
-      >
-        {isUploading ? (
-          <Spinner />
-        ) : (
-          <UploadCloud className="mb-3 h-8 w-8 text-cyan-200" />
-        )}
-        <span className="text-sm font-medium">
-          {isUploading ? "Indexing document…" : "Drop or choose a file"}
-        </span>
-        <span className="mt-1 text-xs text-white/40">
-          TXT, PDF, DOCX · maximum {(maxUploadSize / 1024 / 1024).toFixed(0)} MB
-        </span>
+        <button
+          type="button"
+          disabled={demoMode || isUploading || !backendAvailable}
+          onClick={() => inputRef.current?.click()}
+          className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:border-sky-400/30 hover:text-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label={
+            demoMode ? "Uploads disabled in public demo" : "Upload document"
+          }
+          title={
+            demoMode
+              ? "Uploads are disabled in public demo mode"
+              : "Upload document"
+          }
+        >
+          {isUploading ? <Spinner /> : <Plus className="h-4 w-4" />}
+        </button>
         <input
+          ref={inputRef}
           type="file"
           accept=".txt,.pdf,.docx"
           className="sr-only"
-          disabled={isUploading}
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          disabled={demoMode || isUploading}
+          onChange={(event) => {
+            handleFile(event.target.files?.[0]);
+            event.currentTarget.value = "";
+          }}
         />
-      </label>
-      {validation && (
-        <p role="alert" className="mt-2 text-sm text-rose-300">
-          {validation}
-        </p>
-      )}
-      <div className="mt-6 space-y-2" aria-busy={isLoading}>
-        {isLoading && (
-          <p className="text-sm text-white/45">Loading documents…</p>
-        )}
-        {!isLoading && documents.length === 0 && (
-          <p className="rounded-2xl border border-white/10 p-4 text-sm text-white/45">
-            No documents indexed yet.
-          </p>
-        )}
-        {documents.map((doc) => (
-          <div
-            key={doc.id}
+      </div>
+
+      {!demoMode && backendAvailable && (
+        <div className="px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              handleFile(event.dataTransfer.files?.[0]);
+            }}
             className={cn(
-              "flex items-center gap-3 rounded-2xl border p-3",
-              selectedId === doc.id
-                ? "border-cyan-300/40 bg-cyan-300/5"
-                : "border-white/10 bg-black/20",
+              "flex w-full items-center gap-3 rounded-xl border border-dashed px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+              isDragging
+                ? "border-sky-400 bg-sky-400/10"
+                : "border-white/12 bg-white/[0.025] hover:border-white/25",
             )}
           >
-            <button
-              disabled={doc.processing_status !== "ready"}
-              className="min-w-0 flex-1 rounded-lg text-left outline-none disabled:cursor-not-allowed disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-              onClick={() => onSelect(doc.id)}
-            >
-              <span
-                title={doc.filename}
-                className="block truncate text-sm font-medium"
-              >
-                {doc.filename}
+            <UploadCloud className="h-4 w-4 shrink-0 text-sky-300" />
+            <span className="min-w-0">
+              <span className="block text-xs font-medium">
+                Drop or choose a document
               </span>
-              <span className="text-xs text-white/40">
-                {doc.processing_status !== "ready"
-                  ? `${doc.processing_status} · `
-                  : ""}
-                {doc.chunk_count} chunks · {(doc.file_size / 1024).toFixed(1)}{" "}
-                KB
+              <span className="block text-[11px] text-slate-500">
+                TXT, PDF, DOCX · {formatBytes(maxUploadSize)} max
               </span>
-            </button>
-            <button
-              aria-label={`Delete ${doc.filename}`}
-              className="rounded-xl p-2 text-white/40 outline-none hover:bg-rose-400/10 hover:text-rose-300 focus-visible:ring-2 focus-visible:ring-rose-300/60"
-              onClick={() => onDelete(doc.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            </span>
+          </button>
+          {validation && (
+            <p role="alert" className="mt-2 px-1 text-xs text-rose-300">
+              {validation}
+            </p>
+          )}
+        </div>
+      )}
+
+      {demoMode && (
+        <div className="m-3 flex gap-2 rounded-xl border border-violet-400/15 bg-violet-400/[0.06] p-3 text-xs leading-5 text-violet-100/80">
+          <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            Sample documents only. Upload and delete are locked in this public
+            demo.
+          </span>
+        </div>
+      )}
+
+      {!backendAvailable && !isLoading && (
+        <div
+          role="alert"
+          className="m-3 flex gap-2 rounded-xl border border-amber-400/15 bg-amber-400/[0.06] p-3 text-xs leading-5 text-amber-100/80"
+        >
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            The API is unavailable. Start the backend, then refresh this page.
+          </span>
+        </div>
+      )}
+
+      <div
+        className="min-h-0 flex-1 overflow-y-auto p-3"
+        aria-busy={isLoading}
+        aria-live="polite"
+      >
+        {isLoading && (
+          <div className="space-y-2" aria-label="Loading document library">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="h-[68px] animate-pulse rounded-xl bg-white/5"
+              />
+            ))}
           </div>
-        ))}
+        )}
+        {!isLoading && documents.length === 0 && backendAvailable && (
+          <div className="flex min-h-44 flex-col items-center justify-center px-4 text-center">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/5">
+              <FileText className="h-4 w-4 text-slate-500" />
+            </div>
+            <p className="mt-3 text-sm font-medium">No documents yet</p>
+            <p className="mt-1 max-w-52 text-xs leading-5 text-slate-500">
+              Add a client brief, contract, or delivery plan to start a grounded
+              workspace.
+            </p>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          {documents.map((document) => (
+            <div
+              key={document.id}
+              className={cn(
+                "group flex items-center gap-2 rounded-xl border p-2 transition",
+                selectedId === document.id
+                  ? "border-sky-400/25 bg-sky-400/[0.08]"
+                  : "border-transparent hover:border-white/8 hover:bg-white/[0.035]",
+              )}
+            >
+              <button
+                type="button"
+                disabled={document.processing_status !== "ready"}
+                onClick={() => onSelect(document.id)}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/8 bg-white/5 text-[10px] font-semibold text-slate-400">
+                  {extensionFor(document)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span
+                    title={document.filename}
+                    className="block truncate text-xs font-medium text-slate-200"
+                  >
+                    {document.filename}
+                  </span>
+                  <span className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        document.processing_status === "ready"
+                          ? "bg-emerald-400"
+                          : document.processing_status === "failed"
+                            ? "bg-rose-400"
+                            : "animate-pulse bg-amber-400",
+                      )}
+                    />
+                    {document.processing_status === "ready"
+                      ? `${formatBytes(document.file_size)} · ${document.chunk_count} sources`
+                      : document.processing_status}
+                  </span>
+                </span>
+              </button>
+              {!demoMode && (
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(document)}
+                  aria-label={`Delete ${document.filename}`}
+                  className="rounded-lg p-2 text-slate-600 opacity-70 transition hover:bg-rose-400/10 hover:text-rose-300 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
-    </Card>
+
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#11161e] p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="delete-title" className="font-semibold">
+                  Delete document?
+                </h2>
+                <p className="mt-2 break-words text-sm leading-6 text-slate-400">
+                  This removes{" "}
+                  <strong className="text-slate-200">
+                    {pendingDelete.filename}
+                  </strong>
+                  , its source file, metadata, chunks, and scoped vectors.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                aria-label="Close confirmation"
+                className="rounded-lg p-1 text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDelete(pendingDelete.id);
+                  setPendingDelete(null);
+                }}
+                className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+              >
+                Delete everywhere
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </aside>
   );
 }

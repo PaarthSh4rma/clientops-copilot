@@ -1,0 +1,16 @@
+Northstar Retail — Client Success Plan
+
+Purpose
+The implementation will connect the Northstar product catalogue to the new commerce platform and prepare the support team for launch.
+
+Decisions
+The team selected a phased rollout. The pilot will include the Melbourne and Sydney stores before the national release. CSV remains the approved fallback for the first release.
+
+Milestones and commitments
+Data mapping must be approved by 18 October 2026. The pilot launch is scheduled for 4 November 2026. Priya owns the mapping review. Jordan will deliver support-team training before 30 October 2026.
+
+Risks and blockers
+The client has not confirmed whether archived SKUs should migrate. API rate-limit documentation is still outstanding. Both issues may delay final acceptance if unresolved by the mapping deadline.
+
+Success criteria
+The pilot is accepted when catalogue updates sync successfully, support staff complete training, and rollback instructions have been tested.

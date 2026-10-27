@@ -13,6 +13,23 @@ def test_supported_upload_persistence_and_listing(client):
     assert document["chunk_count"] > 0
 
 
+def test_duplicate_upload_selects_existing_document_without_reindexing(client, app_context):
+    _, vectors, _, _ = app_context
+    original = upload_txt(client, "contract.txt", "Same source content")
+    vector_ids = set(vectors.records)
+    response = client.post(
+        "/documents/upload",
+        files={"file": ("renamed-contract.txt", b"Same source content", "text/plain")},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "message": 'This file is already indexed as "contract.txt"',
+        "document_id": original["id"],
+        "code": "duplicate_document",
+    }
+    assert set(vectors.records) == vector_ids
+
+
 def test_unsupported_upload(client):
     response = client.post("/documents/upload", files={"file": ("bad.exe", b"abc", "application/octet-stream")})
     assert response.status_code == 400
@@ -163,7 +180,35 @@ def test_health_and_readiness(client):
     readiness = client.get("/ready").json()
     assert readiness["status"] == "ready"
     assert readiness["limits"]["max_upload_size_bytes"] == 10 * 1024 * 1024
-    assert client.get("/openapi.json").json()["info"]["version"] == "0.1.5"
+    assert client.get("/openapi.json").json()["info"]["version"] == "0.1.6"
+
+
+def test_demo_mode_exposes_capabilities_and_blocks_mutations(client, app_context):
+    _, _, _, settings = app_context
+    document = upload_txt(client)
+    settings.demo_mode = True
+    readiness = client.get("/ready").json()
+    assert readiness["demo_mode"] is True
+    assert readiness["capabilities"] == {"upload": False, "delete": False, "grounded_chat": True}
+    assert (
+        client.post("/documents/upload", files={"file": ("new.txt", b"new content", "text/plain")}).status_code == 403
+    )
+    assert client.delete(f"/documents/{document['id']}").status_code == 403
+    assert (
+        client.post("/documents/chat", json={"document_id": document["id"], "question": "contract"}).status_code == 200
+    )
+
+
+def test_demo_mode_caps_chat_requests(client, app_context):
+    from app.core.demo import DemoChatLimiter
+
+    _, _, _, settings = app_context
+    document = upload_txt(client)
+    settings.demo_mode = True
+    client.app.state.demo_chat_limiter = DemoChatLimiter(1)
+    payload = {"document_id": document["id"], "question": "contract"}
+    assert client.post("/documents/chat", json=payload).status_code == 200
+    assert client.post("/documents/chat", json=payload).status_code == 429
 
 
 def test_readiness_degrades_when_vector_store_is_unavailable(client, app_context):
